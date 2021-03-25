@@ -2,6 +2,8 @@
 // Use of this source code is governed by a BSD-style license that can be
 // found in the LICENSE file.
 
+// @dart = 2.8
+
 import 'package:file/memory.dart';
 import 'package:flutter_tools/src/android/android_device.dart';
 import 'package:flutter_tools/src/android/android_sdk.dart';
@@ -11,10 +13,11 @@ import 'package:flutter_tools/src/base/logger.dart';
 import 'package:flutter_tools/src/base/platform.dart';
 import 'package:flutter_tools/src/build_info.dart';
 import 'package:flutter_tools/src/device.dart';
-import 'package:mockito/mockito.dart';
+import 'package:test/fake.dart';
 
 import '../../src/common.dart';
 import '../../src/context.dart';
+import '../../src/fake_process_manager.dart';
 
 const FakeCommand kAdbVersionCommand = FakeCommand(
   command: <String>['adb', 'version'],
@@ -47,9 +50,7 @@ void main() {
   setUp(() {
     processManager = FakeProcessManager.list(<FakeCommand>[]);
     fileSystem = MemoryFileSystem.test();
-    androidSdk = MockAndroidSdk();
-    when(androidSdk.adbPath).thenReturn('adb');
-    when(androidSdk.licensesAvailable).thenReturn(false);
+    androidSdk = FakeAndroidSdk();
   });
 
   for (final TargetPlatform targetPlatform in <TargetPlatform>[
@@ -89,8 +90,6 @@ void main() {
       processManager.addCommand(const FakeCommand(
         command: <String>['adb', '-s', '1234', 'shell', 'pm', 'list', 'packages', 'FlutterApp'],
       ));
-      processManager.addCommand(kAdbVersionCommand);
-      processManager.addCommand(kStartServer);
       processManager.addCommand(const FakeCommand(
         command: <String>['adb', '-s', '1234', 'install', '-t', '-r', 'app.apk'],
       ));
@@ -123,7 +122,7 @@ void main() {
       );
 
       expect(launchResult.started, true);
-      expect(processManager.hasRemainingExpectations, false);
+      expect(processManager, hasNoRemainingExpectations);
     });
   }
 
@@ -162,7 +161,7 @@ void main() {
     );
 
     expect(launchResult.started, false);
-    expect(processManager.hasRemainingExpectations, false);
+    expect(processManager, hasNoRemainingExpectations);
   });
 
   testWithoutContext('AndroidDevice.startApp forwards all supported debugging options', () async {
@@ -193,8 +192,6 @@ void main() {
     processManager.addCommand(const FakeCommand(
       command: <String>['adb', '-s', '1234', 'shell', 'pm', 'list', 'packages', '--user', '10', 'FlutterApp'],
     ));
-    processManager.addCommand(kAdbVersionCommand);
-    processManager.addCommand(kStartServer);
     // TODO(jonahwilliams): investigate why this doesn't work.
     // This doesn't work with the current Android log reader implementation.
     processManager.addCommand(const FakeCommand(
@@ -289,8 +286,14 @@ void main() {
 
     // This fails to start due to observatory discovery issues.
     expect(launchResult.started, false);
-    expect(processManager.hasRemainingExpectations, false);
+    expect(processManager, hasNoRemainingExpectations);
   });
 }
 
-class MockAndroidSdk extends Mock implements AndroidSdk {}
+class FakeAndroidSdk extends Fake implements AndroidSdk {
+  @override
+  String get adbPath => 'adb';
+
+  @override
+  bool get licensesAvailable => false;
+}

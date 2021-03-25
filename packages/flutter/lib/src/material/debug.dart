@@ -2,9 +2,6 @@
 // Use of this source code is governed by a BSD-style license that can be
 // found in the LICENSE file.
 
-// @dart = 2.8
-
-import 'package:flutter/foundation.dart';
 import 'package:flutter/widgets.dart';
 
 import 'material.dart';
@@ -52,7 +49,6 @@ bool debugCheckHasMaterial(BuildContext context) {
   }());
   return true;
 }
-
 
 /// Asserts that the given context has a [Localizations] ancestor that contains
 /// a [MaterialLocalizations] delegate.
@@ -141,7 +137,7 @@ bool debugCheckHasScaffold(BuildContext context) {
 /// Does nothing if asserts are disabled. Always returns true.
 bool debugCheckHasScaffoldMessenger(BuildContext context) {
   assert(() {
-    if (context.widget is! ScaffoldMessenger && context.findAncestorWidgetOfExactType<ScaffoldMessenger>() == null) {
+    if (context.findAncestorWidgetOfExactType<ScaffoldMessenger>() == null) {
       throw FlutterError.fromParts(<DiagnosticsNode>[
         ErrorSummary('No ScaffoldMessenger widget found.'),
         ErrorDescription('${context.widget.runtimeType} widgets require a ScaffoldMessenger widget ancestor.'),

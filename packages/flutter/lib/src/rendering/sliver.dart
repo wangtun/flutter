@@ -8,7 +8,6 @@ import 'package:flutter/foundation.dart';
 import 'package:flutter/gestures.dart';
 import 'package:vector_math/vector_math_64.dart';
 
-import 'binding.dart';
 import 'box.dart';
 import 'debug.dart';
 import 'object.dart';
@@ -466,9 +465,8 @@ class SliverConstraints extends Constraints {
       return true;
     if (other is! SliverConstraints)
       return false;
-    assert(other is SliverConstraints && other.debugAssertIsValid());
-    return other is SliverConstraints
-        && other.axisDirection == axisDirection
+    assert(other.debugAssertIsValid());
+    return other.axisDirection == axisDirection
         && other.growthDirection == growthDirection
         && other.scrollOffset == scrollOffset
         && other.overlap == overlap
@@ -1488,7 +1486,7 @@ abstract class RenderSliver extends RenderObject {
         return true;
       assert(p0.dx == p1.dx || p0.dy == p1.dy); // must be axis-aligned
       final double d = (p1 - p0).distance * 0.2;
-      Offset temp;
+      final Offset temp;
       double dx1, dx2, dy1, dy2;
       switch (direction) {
         case GrowthDirection.forward:
@@ -1598,8 +1596,7 @@ abstract class RenderSliver extends RenderObject {
 }
 
 /// Mixin for [RenderSliver] subclasses that provides some utility functions.
-abstract class RenderSliverHelpers implements RenderSliver {
-
+mixin RenderSliverHelpers implements RenderSliver {
   bool _getRightWayUp(SliverConstraints constraints) {
     assert(constraints != null);
     assert(constraints.axisDirection != null);
@@ -1734,7 +1731,7 @@ abstract class RenderSliverSingleBoxAdapter extends RenderSliver with RenderObje
   /// [SliverConstraints.growthDirection] and the given geometry.
   @protected
   void setChildParentData(RenderObject child, SliverConstraints constraints, SliverGeometry geometry) {
-    final SliverPhysicalParentData childParentData = child.parentData as SliverPhysicalParentData;
+    final SliverPhysicalParentData childParentData = child.parentData! as SliverPhysicalParentData;
     assert(constraints.axisDirection != null);
     assert(constraints.growthDirection != null);
     switch (applyGrowthDirectionToAxisDirection(constraints.axisDirection, constraints.growthDirection)) {
@@ -1771,14 +1768,14 @@ abstract class RenderSliverSingleBoxAdapter extends RenderSliver with RenderObje
   void applyPaintTransform(RenderObject child, Matrix4 transform) {
     assert(child != null);
     assert(child == this.child);
-    final SliverPhysicalParentData childParentData = child.parentData as SliverPhysicalParentData;
+    final SliverPhysicalParentData childParentData = child.parentData! as SliverPhysicalParentData;
     childParentData.applyPaintTransform(transform);
   }
 
   @override
   void paint(PaintingContext context, Offset offset) {
     if (child != null && geometry!.visible) {
-      final SliverPhysicalParentData childParentData = child!.parentData as SliverPhysicalParentData;
+      final SliverPhysicalParentData childParentData = child!.parentData! as SliverPhysicalParentData;
       context.paintChild(child!, offset + childParentData.paintOffset);
     }
   }
@@ -1810,7 +1807,7 @@ class RenderSliverToBoxAdapter extends RenderSliverSingleBoxAdapter {
     }
     final SliverConstraints constraints = this.constraints;
     child!.layout(constraints.asBoxConstraints(), parentUsesSize: true);
-    double childExtent;
+    final double childExtent;
     switch (constraints.axis) {
       case Axis.horizontal:
         childExtent = child!.size.width;

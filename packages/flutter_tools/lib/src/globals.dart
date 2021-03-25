@@ -2,10 +2,13 @@
 // Use of this source code is governed by a BSD-style license that can be
 // found in the LICENSE file.
 
+// @dart = 2.8
+
 import 'package:process/process.dart';
 
 import 'android/android_sdk.dart';
 import 'android/android_studio.dart';
+import 'android/gradle_utils.dart';
 import 'artifacts.dart';
 import 'base/bot_detector.dart';
 import 'base/config.dart';
@@ -17,6 +20,7 @@ import 'base/logger.dart';
 import 'base/net.dart';
 import 'base/os.dart';
 import 'base/platform.dart';
+import 'base/process.dart';
 import 'base/signals.dart';
 import 'base/template.dart';
 import 'base/terminal.dart';
@@ -32,10 +36,12 @@ import 'ios/plist_parser.dart';
 import 'ios/simulators.dart';
 import 'ios/xcodeproj.dart';
 import 'macos/cocoapods.dart';
+import 'macos/cocoapods_validator.dart';
 import 'macos/xcode.dart';
 import 'persistent_tool_state.dart';
 import 'project.dart';
 import 'reporting/reporting.dart';
+import 'runner/local_engine.dart';
 import 'version.dart';
 
 Artifacts get artifacts => context.get<Artifacts>();
@@ -59,12 +65,16 @@ FlutterProjectFactory get projectFactory {
   );
 }
 
+CocoaPodsValidator get cocoapodsValidator => context.get<CocoaPodsValidator>();
+
+LocalEngineLocator get localEngineLocator => context.get<LocalEngineLocator>();
+
 /// Currently active implementation of the file system.
 ///
 /// By default it uses local disk-based implementation. Override this in tests
 /// with [MemoryFileSystem].
 FileSystem get fs => ErrorHandlingFileSystem(
-  delegate: context.get<FileSystem>() ?? LocalFileSystem.instance,
+  delegate: context.get<FileSystem>() ?? localFileSystem,
   platform: platform,
 );
 
@@ -77,6 +87,7 @@ const ProcessManager _kLocalProcessManager = LocalProcessManager();
 
 /// The active process manager.
 ProcessManager get processManager => context.get<ProcessManager>() ?? _kLocalProcessManager;
+ProcessUtils get processUtils => context.get<ProcessUtils>();
 
 const Platform _kLocalPlatform = LocalPlatform();
 
@@ -95,8 +106,12 @@ XcodeProjectInterpreter get xcodeProjectInterpreter => context.get<XcodeProjectI
 
 XCDevice get xcdevice => context.get<XCDevice>();
 
-final OutputPreferences _defaultOutputPreferences = OutputPreferences();
-OutputPreferences get outputPreferences => context.get<OutputPreferences>() ?? _defaultOutputPreferences;
+final OutputPreferences _default = OutputPreferences(
+  wrapText: stdio.hasTerminal ?? false,
+  showColor:  platform.stdoutSupportsAnsi,
+  stdio: stdio,
+);
+OutputPreferences get outputPreferences => context.get<OutputPreferences>() ?? _default;
 
 final BotDetector _defaultBotDetector = BotDetector(
   httpClientFactory: context.get<HttpClientFactory>() ?? () => HttpClient(),
@@ -110,6 +125,8 @@ Future<bool> get isRunningOnBot => botDetector.isRunningOnBot;
 
 /// The current system clock instance.
 SystemClock get systemClock => context.get<SystemClock>();
+
+ProcessInfo get processInfo => context.get<ProcessInfo>();
 
 /// Display an error level message to the user. Commands should use this if they
 /// fail in some way.
@@ -193,3 +210,18 @@ PlistParser _plistInstance;
 
 /// The global template renderer.
 TemplateRenderer get templateRenderer => context.get<TemplateRenderer>();
+
+/// Gradle utils in the current [AppContext].
+GradleUtils get gradleUtils => context.get<GradleUtils>();
+
+ShutdownHooks get shutdownHooks => context.get<ShutdownHooks>();
+
+// Unless we're in a test of this class's signal handling features, we must
+// have only one instance created with the singleton LocalSignals instance
+// and the catchable signals it considers to be fatal.
+LocalFileSystem _instance;
+LocalFileSystem get localFileSystem => _instance ??= LocalFileSystem(
+  LocalSignals.instance,
+  Signals.defaultExitSignals,
+  shutdownHooks,
+);

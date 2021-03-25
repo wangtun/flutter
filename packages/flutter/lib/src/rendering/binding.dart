@@ -2,9 +2,7 @@
 // Use of this source code is governed by a BSD-style license that can be
 // found in the LICENSE file.
 
-import 'dart:async';
 import 'dart:developer';
-import 'dart:typed_data';
 
 import 'package:flutter/foundation.dart';
 import 'package:flutter/gestures.dart';
@@ -14,14 +12,14 @@ import 'package:flutter/services.dart';
 
 import 'box.dart';
 import 'debug.dart';
-import 'mouse_tracking.dart';
+import 'mouse_tracker.dart';
 import 'object.dart';
 import 'view.dart';
 
 export 'package:flutter/gestures.dart' show HitTestResult;
 
 // Examples can assume:
-// dynamic context;
+// late BuildContext context;
 
 /// The glue between the render tree and the Flutter engine.
 mixin RendererBinding on BindingBase, ServicesBinding, SchedulerBinding, GestureBinding, SemanticsBinding, HitTestable {
@@ -45,6 +43,9 @@ mixin RendererBinding on BindingBase, ServicesBinding, SchedulerBinding, Gesture
     assert(renderView != null);
     addPersistentFrameCallback(_handlePersistentFrameCallback);
     initMouseTracker();
+    if (kIsWeb) {
+      addPostFrameCallback(_handleWebFirstFrame);
+    }
   }
 
   /// The current [RendererBinding], if one has been created.
@@ -57,6 +58,17 @@ mixin RendererBinding on BindingBase, ServicesBinding, SchedulerBinding, Gesture
 
     assert(() {
       // these service extensions only work in debug mode
+      registerBoolServiceExtension(
+        name: 'invertOversizedImages',
+        getter: () async => debugInvertOversizedImages,
+        setter: (bool value) async {
+          if (debugInvertOversizedImages != value) {
+            debugInvertOversizedImages = value;
+            return _forceRepaint();
+          }
+          return Future<void>.value();
+        },
+      );
       registerBoolServiceExtension(
         name: 'debugPaint',
         getter: () async => debugPaintSizeEnabled,
@@ -99,11 +111,13 @@ mixin RendererBinding on BindingBase, ServicesBinding, SchedulerBinding, Gesture
           return _forceRepaint();
         },
       );
-      registerSignalServiceExtension(
+      registerServiceExtension(
         name: 'debugDumpLayerTree',
-        callback: () {
-          debugDumpLayerTree();
-          return debugPrintDone;
+        callback: (Map<String, String> parameters) async {
+          final String data = RendererBinding.instance?.renderView.debugLayer?.toStringDeep() ?? 'Layer tree unavailable.';
+          return <String, Object>{
+            'data': data,
+          };
         },
       );
       return true;
@@ -111,27 +125,35 @@ mixin RendererBinding on BindingBase, ServicesBinding, SchedulerBinding, Gesture
 
     if (!kReleaseMode) {
       // these service extensions work in debug or profile mode
-      registerSignalServiceExtension(
+      registerServiceExtension(
         name: 'debugDumpRenderTree',
-        callback: () {
-          debugDumpRenderTree();
-          return debugPrintDone;
-        },
+        callback: (Map<String, String> parameters) async {
+          final String data = RendererBinding.instance?.renderView.toStringDeep() ?? 'Render tree unavailable.';
+          return <String, Object>{
+            'data': data,
+          };
+        }
       );
 
-      registerSignalServiceExtension(
+      registerServiceExtension(
         name: 'debugDumpSemanticsTreeInTraversalOrder',
-        callback: () {
-          debugDumpSemanticsTree(DebugSemanticsDumpOrder.traversalOrder);
-          return debugPrintDone;
+        callback: (Map<String, String> parameters) async {
+          final String data = RendererBinding.instance?.renderView.debugSemantics
+            ?.toStringDeep(childOrder: DebugSemanticsDumpOrder.traversalOrder) ?? 'Semantics not collected.';
+          return <String, Object>{
+            'data': data,
+          };
         },
       );
 
-      registerSignalServiceExtension(
+      registerServiceExtension(
         name: 'debugDumpSemanticsTreeInInverseHitTestOrder',
-        callback: () {
-          debugDumpSemanticsTree(DebugSemanticsDumpOrder.inverseHitTest);
-          return debugPrintDone;
+        callback: (Map<String, String> parameters) async {
+          final String data = RendererBinding.instance?.renderView.debugSemantics
+            ?.toStringDeep(childOrder: DebugSemanticsDumpOrder.inverseHitTest) ?? 'Semantics not collected.';
+          return <String, Object>{
+            'data': data,
+          };
         },
       );
     }
@@ -164,7 +186,7 @@ mixin RendererBinding on BindingBase, ServicesBinding, SchedulerBinding, Gesture
   late PipelineOwner _pipelineOwner;
 
   /// The render tree that's attached to the output surface.
-  RenderView get renderView => _pipelineOwner.rootNode as RenderView;
+  RenderView get renderView => _pipelineOwner.rootNode! as RenderView;
   /// Sets the given [RenderView] object (which must not be null), and its tree, to
   /// be the new render tree to display. The previous tree, if any, is detached.
   set renderView(RenderView value) {
@@ -174,7 +196,7 @@ mixin RendererBinding on BindingBase, ServicesBinding, SchedulerBinding, Gesture
 
   /// Called when the system metrics change.
   ///
-  /// See [Window.onMetricsChanged].
+  /// See [dart:ui.PlatformDispatcher.onMetricsChanged].
   @protected
   void handleMetricsChanged() {
     assert(renderView != null);
@@ -184,7 +206,7 @@ mixin RendererBinding on BindingBase, ServicesBinding, SchedulerBinding, Gesture
 
   /// Called when the platform text scale factor changes.
   ///
-  /// See [Window.onTextScaleFactorChanged].
+  /// See [dart:ui.PlatformDispatcher.onTextScaleFactorChanged].
   @protected
   void handleTextScaleFactorChanged() { }
 
@@ -196,18 +218,18 @@ mixin RendererBinding on BindingBase, ServicesBinding, SchedulerBinding, Gesture
   /// changes.
   ///
   /// {@tool snippet}
-  /// Querying [Window.platformBrightness].
-  ///
-  /// ```dart
-  /// final Brightness brightness = WidgetsBinding.instance.window.platformBrightness;
-  /// ```
-  /// {@end-tool}
-  ///
-  /// {@tool snippet}
   /// Querying [MediaQuery] directly. Preferred.
   ///
   /// ```dart
   /// final Brightness brightness = MediaQuery.platformBrightnessOf(context);
+  /// ```
+  /// {@end-tool}
+  ///
+  /// {@tool snippet}
+  /// Querying [PlatformDispatcher.platformBrightness].
+  ///
+  /// ```dart
+  /// final Brightness brightness = WidgetsBinding.instance!.platformDispatcher.platformBrightness;
   /// ```
   /// {@end-tool}
   ///
@@ -220,7 +242,7 @@ mixin RendererBinding on BindingBase, ServicesBinding, SchedulerBinding, Gesture
   /// ```
   /// {@end-tool}
   ///
-  /// See [Window.onPlatformBrightnessChanged].
+  /// See [dart:ui.PlatformDispatcher.onPlatformBrightnessChanged].
   @protected
   void handlePlatformBrightnessChanged() { }
 
@@ -257,7 +279,6 @@ mixin RendererBinding on BindingBase, ServicesBinding, SchedulerBinding, Gesture
   @override // from GestureBinding
   void dispatchEvent(PointerEvent event, HitTestResult? hitTestResult) {
     if (hitTestResult != null ||
-        event is PointerHoverEvent ||
         event is PointerAddedEvent ||
         event is PointerRemovedEvent) {
       assert(event.position != null);
@@ -280,6 +301,12 @@ mixin RendererBinding on BindingBase, ServicesBinding, SchedulerBinding, Gesture
       _semanticsHandle?.dispose();
       _semanticsHandle = null;
     }
+  }
+
+  void _handleWebFirstFrame(Duration _) {
+    assert(kIsWeb);
+    const MethodChannel methodChannel = MethodChannel('flutter/service_worker');
+    methodChannel.invokeMethod<void>('first-frame');
   }
 
   void _handleSemanticsAction(int id, SemanticsAction action, ByteData? args) {
@@ -384,11 +411,11 @@ mixin RendererBinding on BindingBase, ServicesBinding, SchedulerBinding, Gesture
   /// Each frame consists of the following phases:
   ///
   /// 1. The animation phase: The [handleBeginFrame] method, which is registered
-  /// with [Window.onBeginFrame], invokes all the transient frame callbacks
-  /// registered with [scheduleFrameCallback], in registration order. This
-  /// includes all the [Ticker] instances that are driving [AnimationController]
-  /// objects, which means all of the active [Animation] objects tick at this
-  /// point.
+  /// with [PlatformDispatcher.onBeginFrame], invokes all the transient frame
+  /// callbacks registered with [scheduleFrameCallback], in registration order.
+  /// This includes all the [Ticker] instances that are driving
+  /// [AnimationController] objects, which means all of the active [Animation]
+  /// objects tick at this point.
   ///
   /// 2. Microtasks: After [handleBeginFrame] returns, any microtasks that got
   /// scheduled by transient frame callbacks get to run. This typically includes
@@ -396,9 +423,9 @@ mixin RendererBinding on BindingBase, ServicesBinding, SchedulerBinding, Gesture
   /// completed this frame.
   ///
   /// After [handleBeginFrame], [handleDrawFrame], which is registered with
-  /// [Window.onDrawFrame], is called, which invokes all the persistent frame
-  /// callbacks, of which the most notable is this method, [drawFrame], which
-  /// proceeds as follows:
+  /// [dart:ui.PlatformDispatcher.onDrawFrame], is called, which invokes all the
+  /// persistent frame callbacks, of which the most notable is this method,
+  /// [drawFrame], which proceeds as follows:
   ///
   /// 3. The layout phase: All the dirty [RenderObject]s in the system are laid
   /// out (see [RenderObject.performLayout]). See [RenderObject.markNeedsLayout]

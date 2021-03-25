@@ -2,8 +2,6 @@
 // Use of this source code is governed by a BSD-style license that can be
 // found in the LICENSE file.
 
-// @dart = 2.8
-
 import 'package:flutter/material.dart';
 import 'package:flutter/rendering.dart';
 import 'package:flutter_test/flutter_test.dart';
@@ -26,8 +24,9 @@ void main() {
     expect(themeData.horizontalMargin, null);
     expect(themeData.columnSpacing, null);
     expect(themeData.dividerThickness, null);
+    expect(themeData.checkboxHorizontalMargin, null);
 
-    const DataTableTheme theme = DataTableTheme(data: DataTableThemeData());
+    const DataTableTheme theme = DataTableTheme(data: DataTableThemeData(), child: SizedBox());
     expect(theme.data.decoration, null);
     expect(theme.data.dataRowColor, null);
     expect(theme.data.dataRowHeight, null);
@@ -38,6 +37,7 @@ void main() {
     expect(theme.data.horizontalMargin, null);
     expect(theme.data.columnSpacing, null);
     expect(theme.data.dividerThickness, null);
+    expect(theme.data.checkboxHorizontalMargin, null);
   });
 
   testWidgets('Default DataTableThemeData debugFillProperties', (WidgetTester tester) async {
@@ -69,6 +69,7 @@ void main() {
       horizontalMargin: 3.0,
       columnSpacing: 4.0,
       dividerThickness: 5.0,
+      checkboxHorizontalMargin: 6.0,
     ).debugFillProperties(builder);
 
     final List<String> description = builder.properties
@@ -86,18 +87,15 @@ void main() {
     expect(description[7], 'horizontalMargin: 3.0');
     expect(description[8], 'columnSpacing: 4.0');
     expect(description[9], 'dividerThickness: 5.0');
+    expect(description[10], 'checkboxHorizontalMargin: 6.0');
   });
 
   testWidgets('DataTable is themeable', (WidgetTester tester) async {
     const BoxDecoration decoration = BoxDecoration(color: Color(0xfffffff0));
-    final MaterialStateProperty<Color> dataRowColor = MaterialStateProperty.resolveWith<Color>(
-      (Set<MaterialState> states) => const Color(0xfffffff1),
-    );
+    final MaterialStateProperty<Color> dataRowColor = MaterialStateProperty.all<Color>(const Color(0xfffffff1));
     const double dataRowHeight = 51.0;
     const TextStyle dataTextStyle = TextStyle(fontSize: 12.5);
-    final MaterialStateProperty<Color> headingRowColor = MaterialStateProperty.resolveWith<Color>(
-      (Set<MaterialState> states) => const Color(0xfffffff2),
-    );
+    final MaterialStateProperty<Color> headingRowColor = MaterialStateProperty.all<Color>(const Color(0xfffffff2));
     const double headingRowHeight = 52.0;
     const TextStyle headingTextStyle = TextStyle(fontSize: 14.5);
     const double horizontalMargin = 3.0;
@@ -141,37 +139,30 @@ void main() {
       ),
     );
 
-    final Finder dataTableInkFinder = find.descendant(of: find.byType(DataTable), matching: find.byType(Ink));
-    expect(tester.widgetList<Ink>(dataTableInkFinder).last.decoration, decoration);
+    final Finder tableContainerFinder = find.ancestor(of: find.byType(Table), matching: find.byType(Container));
+    expect(tester.widgetList<Container>(tableContainerFinder).first.decoration, decoration);
 
-    final TextStyle dataRowTextStyle = tester.renderObject<RenderParagraph>(find.text('Data')).text.style;
+    final TextStyle dataRowTextStyle = tester.renderObject<RenderParagraph>(find.text('Data')).text.style!;
     expect(dataRowTextStyle.fontSize, dataTextStyle.fontSize);
     expect(_tableRowBoxDecoration(tester: tester, index: 1).color, dataRowColor.resolve(<MaterialState>{}));
-    expect(_tableRowBoxDecoration(tester: tester, index: 1).border.top.width, dividerThickness);
+    expect(_tableRowBoxDecoration(tester: tester, index: 1).border!.top.width, dividerThickness);
+    expect(tester.getSize(_findFirstContainerFor('Data')).height, dataRowHeight);
 
-    final Finder dataRowContainer = find.ancestor(of: find.text('Data'), matching: find.byType(Container));
-    expect(tester.getSize(dataRowContainer).height, dataRowHeight);
-
-    final TextStyle headingRowTextStyle = tester.renderObject<RenderParagraph>(find.text('A')).text.style;
+    final TextStyle headingRowTextStyle = tester.renderObject<RenderParagraph>(find.text('A')).text.style!;
     expect(headingRowTextStyle.fontSize, headingTextStyle.fontSize);
     expect(_tableRowBoxDecoration(tester: tester, index: 0).color, headingRowColor.resolve(<MaterialState>{}));
 
-    final Finder headingRowContainer = find.ancestor(of: find.text('A'), matching: find.byType(Container));
-    expect(tester.getSize(headingRowContainer).height, headingRowHeight);
+    expect(tester.getSize(_findFirstContainerFor('A')).height, headingRowHeight);
     expect(tester.getTopLeft(find.text('A')).dx, horizontalMargin);
     expect(tester.getTopLeft(find.text('Data 2')).dx - tester.getTopRight(find.text('Data')).dx, columnSpacing);
   });
 
   testWidgets('DataTable properties are taken over the theme values', (WidgetTester tester) async {
     const BoxDecoration themeDecoration = BoxDecoration(color: Color(0xfffffff1));
-    final MaterialStateProperty<Color> themeDataRowColor = MaterialStateProperty.resolveWith<Color>(
-      (Set<MaterialState> states) => const Color(0xfffffff0),
-    );
+    final MaterialStateProperty<Color> themeDataRowColor = MaterialStateProperty.all<Color>(const Color(0xfffffff0));
     const double themeDataRowHeight = 50.0;
     const TextStyle themeDataTextStyle = TextStyle(fontSize: 11.5);
-    final MaterialStateProperty<Color> themeHeadingRowColor = MaterialStateProperty.resolveWith<Color>(
-      (Set<MaterialState> states) => const Color(0xfffffff1),
-    );
+    final MaterialStateProperty<Color> themeHeadingRowColor = MaterialStateProperty.all<Color>(const Color(0xfffffff1));
     const double themeHeadingRowHeight = 51.0;
     const TextStyle themeHeadingTextStyle = TextStyle(fontSize: 13.5);
     const double themeHorizontalMargin = 2.0;
@@ -179,14 +170,10 @@ void main() {
     const double themeDividerThickness = 4.0;
 
     const BoxDecoration decoration = BoxDecoration(color: Color(0xfffffff0));
-    final MaterialStateProperty<Color> dataRowColor = MaterialStateProperty.resolveWith<Color>(
-      (Set<MaterialState> states) => const Color(0xfffffff1),
-    );
+    final MaterialStateProperty<Color> dataRowColor = MaterialStateProperty.all<Color>(const Color(0xfffffff1));
     const double dataRowHeight = 51.0;
     const TextStyle dataTextStyle = TextStyle(fontSize: 12.5);
-    final MaterialStateProperty<Color> headingRowColor = MaterialStateProperty.resolveWith<Color>(
-      (Set<MaterialState> states) => const Color(0xfffffff2),
-    );
+    final MaterialStateProperty<Color> headingRowColor = MaterialStateProperty.all<Color>(const Color(0xfffffff2));
     const double headingRowHeight = 52.0;
     const TextStyle headingTextStyle = TextStyle(fontSize: 14.5);
     const double horizontalMargin = 3.0;
@@ -239,30 +226,32 @@ void main() {
       ),
     );
 
-    final Finder dataTableInkFinder = find.descendant(of: find.byType(DataTable), matching: find.byType(Ink));
-    expect(tester.widgetList<Ink>(dataTableInkFinder).last.decoration, decoration);
+    final Finder tableContainerFinder = find.ancestor(of: find.byType(Table), matching: find.byType(Container));
+    expect(tester.widget<Container>(tableContainerFinder).decoration, decoration);
 
-    final TextStyle dataRowTextStyle = tester.renderObject<RenderParagraph>(find.text('Data')).text.style;
+    final TextStyle dataRowTextStyle = tester.renderObject<RenderParagraph>(find.text('Data')).text.style!;
     expect(dataRowTextStyle.fontSize, dataTextStyle.fontSize);
     expect(_tableRowBoxDecoration(tester: tester, index: 1).color, dataRowColor.resolve(<MaterialState>{}));
-    expect(_tableRowBoxDecoration(tester: tester, index: 1).border.top.width, dividerThickness);
+    expect(_tableRowBoxDecoration(tester: tester, index: 1).border!.top.width, dividerThickness);
+    expect(tester.getSize(_findFirstContainerFor('Data')).height, dataRowHeight);
 
-    final Finder dataRowContainer = find.ancestor(of: find.text('Data'), matching: find.byType(Container));
-    expect(tester.getSize(dataRowContainer).height, dataRowHeight);
-
-    final TextStyle headingRowTextStyle = tester.renderObject<RenderParagraph>(find.text('A')).text.style;
+    final TextStyle headingRowTextStyle = tester.renderObject<RenderParagraph>(find.text('A')).text.style!;
     expect(headingRowTextStyle.fontSize, headingTextStyle.fontSize);
     expect(_tableRowBoxDecoration(tester: tester, index: 0).color, headingRowColor.resolve(<MaterialState>{}));
 
-    final Finder headingRowContainer = find.ancestor(of: find.text('A'), matching: find.byType(Container));
-    expect(tester.getSize(headingRowContainer).height, headingRowHeight);
+    expect(tester.getSize(_findFirstContainerFor('A')).height, headingRowHeight);
     expect(tester.getTopLeft(find.text('A')).dx, horizontalMargin);
     expect(tester.getTopLeft(find.text('Data 2')).dx - tester.getTopRight(find.text('Data')).dx, columnSpacing);
   });
 }
 
-BoxDecoration _tableRowBoxDecoration({WidgetTester tester, int index}) {
+BoxDecoration _tableRowBoxDecoration({required WidgetTester tester, required int index}) {
   final Table table = tester.widget(find.byType(Table));
   final TableRow tableRow = table.children[index];
-  return tableRow.decoration as BoxDecoration;
+  return tableRow.decoration! as BoxDecoration;
 }
+
+// The finder matches with the Container of the cell content, as well as the
+// Container wrapping the whole table. The first one is used to test row
+// heights.
+Finder _findFirstContainerFor(String text) => find.widgetWithText(Container, text).first;

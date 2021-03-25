@@ -73,12 +73,12 @@ typedef SemanticsBuilderCallback = List<CustomPainterSemantics> Function(Size si
 /// class Sky extends CustomPainter {
 ///   @override
 ///   void paint(Canvas canvas, Size size) {
-///     var rect = Offset.zero & size;
-///     var gradient = RadialGradient(
-///       center: const Alignment(0.7, -0.6),
+///     final Rect rect = Offset.zero & size;
+///     const RadialGradient gradient = RadialGradient(
+///       center: Alignment(0.7, -0.6),
 ///       radius: 0.2,
-///       colors: [const Color(0xFFFFFF00), const Color(0xFF0099FF)],
-///       stops: [0.4, 1.0],
+///       colors: <Color>[Color(0xFFFFFF00), Color(0xFF0099FF)],
+///       stops: <double>[0.4, 1.0],
 ///     );
 ///     canvas.drawRect(
 ///       rect,
@@ -93,13 +93,13 @@ typedef SemanticsBuilderCallback = List<CustomPainterSemantics> Function(Size si
 ///       // with the label "Sun". When text to speech feature is enabled on the
 ///       // device, a user will be able to locate the sun on this picture by
 ///       // touch.
-///       var rect = Offset.zero & size;
-///       var width = size.shortestSide * 0.4;
+///       Rect rect = Offset.zero & size;
+///       final double width = size.shortestSide * 0.4;
 ///       rect = const Alignment(0.8, -0.9).inscribe(Size(width, width), rect);
-///       return [
+///       return <CustomPainterSemantics>[
 ///         CustomPainterSemantics(
 ///           rect: rect,
-///           properties: SemanticsProperties(
+///           properties: const SemanticsProperties(
 ///             label: 'Sun',
 ///             textDirection: TextDirection.ltr,
 ///           ),
@@ -287,7 +287,6 @@ abstract class CustomPainter extends Listenable {
 ///  * [CustomPainter], which creates instances of this class.
 @immutable
 class CustomPainterSemantics {
-
   /// Creates semantics information describing a rectangle on a canvas.
   ///
   /// Arguments `rect` and `properties` must not be null.
@@ -488,6 +487,34 @@ class RenderCustomPaint extends RenderProxyBox {
   bool willChange;
 
   @override
+  double computeMinIntrinsicWidth(double height) {
+    if (child == null)
+      return preferredSize.width.isFinite ? preferredSize.width : 0;
+    return super.computeMinIntrinsicWidth(height);
+  }
+
+  @override
+  double computeMaxIntrinsicWidth(double height) {
+    if (child == null)
+      return preferredSize.width.isFinite ? preferredSize.width : 0;
+    return super.computeMaxIntrinsicWidth(height);
+  }
+
+  @override
+  double computeMinIntrinsicHeight(double width) {
+    if (child == null)
+      return preferredSize.height.isFinite ? preferredSize.height : 0;
+    return super.computeMinIntrinsicHeight(width);
+  }
+
+  @override
+  double computeMaxIntrinsicHeight(double width) {
+    if (child == null)
+      return preferredSize.height.isFinite ? preferredSize.height : 0;
+    return super.computeMaxIntrinsicHeight(width);
+  }
+
+  @override
   void attach(PipelineOwner owner) {
     super.attach(owner);
     _painter?.addListener(markNeedsPaint);
@@ -514,9 +541,14 @@ class RenderCustomPaint extends RenderProxyBox {
   }
 
   @override
-  void performResize() {
-    size = constraints.constrain(preferredSize);
+  void performLayout() {
+    super.performLayout();
     markNeedsSemanticsUpdate();
+  }
+
+  @override
+  Size computeSizeForNoChild(BoxConstraints constraints) {
+    return constraints.constrain(preferredSize);
   }
 
   void _paintWithPainter(Canvas canvas, Offset offset, CustomPainter painter) {
@@ -838,6 +870,9 @@ class RenderCustomPaint extends RenderProxyBox {
     if (properties.textField != null) {
       config.isTextField = properties.textField!;
     }
+    if (properties.slider != null) {
+      config.isSlider = properties.slider!;
+    }
     if (properties.readOnly != null) {
       config.isReadOnly = properties.readOnly!;
     }
@@ -951,6 +986,9 @@ class RenderCustomPaint extends RenderProxyBox {
     }
     if (properties.onSetSelection != null) {
       config.onSetSelection = properties.onSetSelection;
+    }
+    if (properties.onSetText != null) {
+      config.onSetText = properties.onSetText;
     }
     if (properties.onDidGainAccessibilityFocus != null) {
       config.onDidGainAccessibilityFocus = properties.onDidGainAccessibilityFocus;

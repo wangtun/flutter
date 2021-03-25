@@ -187,22 +187,19 @@ abstract class MultiChildLayoutDelegate {
           'There is no child with the id "$childId".'
         );
       }
-      // `offset` has a non-nullable return type, but might be null when
-      // running with weak checking, so we need to null check it anyway (and
-      // ignore the warning that the null-handling logic is dead code).
-      if (offset == null) { // ignore: dead_code
+      if (offset == null) {
         throw FlutterError(
           'The $this custom multichild layout delegate provided a null position for the child with id "$childId".'
         );
       }
       return true;
     }());
-    final MultiChildLayoutParentData childParentData = child!.parentData as MultiChildLayoutParentData;
+    final MultiChildLayoutParentData childParentData = child!.parentData! as MultiChildLayoutParentData;
     childParentData.offset = offset;
   }
 
   DiagnosticsNode _debugDescribeChild(RenderBox child) {
-    final MultiChildLayoutParentData childParentData = child.parentData as MultiChildLayoutParentData;
+    final MultiChildLayoutParentData childParentData = child.parentData! as MultiChildLayoutParentData;
     return DiagnosticsProperty<RenderBox>('${childParentData.id}', child);
   }
 
@@ -223,7 +220,7 @@ abstract class MultiChildLayoutDelegate {
       _idToChild = <Object, RenderBox>{};
       RenderBox? child = firstChild;
       while (child != null) {
-        final MultiChildLayoutParentData childParentData = child.parentData as MultiChildLayoutParentData;
+        final MultiChildLayoutParentData childParentData = child.parentData! as MultiChildLayoutParentData;
         assert(() {
           if (childParentData.id == null) {
             throw FlutterError.fromParts(<DiagnosticsNode>[
@@ -394,6 +391,11 @@ class RenderCustomMultiChildLayoutBox extends RenderBox
     if (height.isFinite)
       return height;
     return 0.0;
+  }
+
+  @override
+  Size computeDryLayout(BoxConstraints constraints) {
+    return _getSize(constraints);
   }
 
   @override

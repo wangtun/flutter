@@ -2,11 +2,11 @@
 // Use of this source code is governed by a BSD-style license that can be
 // found in the LICENSE file.
 
-import 'dart:async';
 import 'dart:convert';
 import 'dart:io';
 
 import 'package:flutter_devicelab/framework/framework.dart';
+import 'package:flutter_devicelab/framework/task_result.dart';
 import 'package:flutter_devicelab/framework/utils.dart';
 import 'package:path/path.dart' as path;
 
@@ -26,7 +26,7 @@ final RegExp ignoreForFilePattern = RegExp(r'// *ignore_for_file:');
 final RegExp asDynamicPattern = RegExp(r'\bas dynamic\b');
 final RegExp deprecationPattern = RegExp(r'^ *@[dD]eprecated');
 const Pattern globalsPattern = 'globals.';
-const String legacyDeprecationPattern = '// ignore: flutter_deprecation_syntax, https';
+const String legacyDeprecationPattern = '// flutter_ignore: deprecation_syntax, https';
 
 Future<double> findCostsForFile(File file) async {
   if (path.extension(file.path) == '.py')

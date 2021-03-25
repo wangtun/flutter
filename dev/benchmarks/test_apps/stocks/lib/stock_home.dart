@@ -25,7 +25,7 @@ class _NotImplementedDialog extends StatelessWidget {
       title: const Text('Not Implemented'),
       content: const Text('This feature has not yet been implemented.'),
       actions: <Widget>[
-        FlatButton(
+        TextButton(
           onPressed: debugDumpApp,
           child: Row(
             children: <Widget>[
@@ -40,7 +40,7 @@ class _NotImplementedDialog extends StatelessWidget {
             ],
           ),
         ),
-        FlatButton(
+        TextButton(
           onPressed: () {
             Navigator.pop(context, false);
           },
@@ -52,7 +52,7 @@ class _NotImplementedDialog extends StatelessWidget {
 }
 
 class StockHome extends StatefulWidget {
-  const StockHome(this.stocks, this.configuration, this.updater);
+  const StockHome(this.stocks, this.configuration, this.updater, {Key key}) : super(key: key);
 
   final StockData stocks;
   final StockConfiguration configuration;
@@ -247,7 +247,7 @@ class StockHomeState extends State<StockHome> {
       stock.percentChange = 100.0 * (1.0 / stock.lastSale);
       stock.lastSale += 1.0;
     });
-    _scaffoldKey.currentState.showSnackBar(SnackBar(
+    ScaffoldMessenger.of(context).showSnackBar(SnackBar(
       content: Text('Purchased ${stock.symbol} for ${stock.lastSale}'),
       action: SnackBarAction(
         label: 'BUY MORE',
@@ -286,7 +286,7 @@ class StockHomeState extends State<StockHome> {
   AppBar buildSearchBar() {
     return AppBar(
       leading: BackButton(
-        color: Theme.of(context).accentColor,
+        color: Theme.of(context).colorScheme.secondary,
       ),
       title: TextField(
         controller: _searchQuery,
@@ -310,7 +310,7 @@ class StockHomeState extends State<StockHome> {
     return FloatingActionButton(
       tooltip: 'Create company',
       child: const Icon(Icons.add),
-      backgroundColor: Theme.of(context).accentColor,
+      backgroundColor: Theme.of(context).colorScheme.secondary,
       onPressed: _handleCreateCompany,
     );
   }

@@ -2,8 +2,6 @@
 // Use of this source code is governed by a BSD-style license that can be
 // found in the LICENSE file.
 
-// @dart = 2.8
-
 import 'package:flutter/foundation.dart';
 import 'package:flutter/gestures.dart';
 import 'package:flutter/rendering.dart';
@@ -16,8 +14,21 @@ const Color _kDefaultGlowColor = Color(0xFFFFFFFF);
 
 /// Describes how [Scrollable] widgets should behave.
 ///
+/// {@template flutter.widgets.scrollBehavior}
 /// Used by [ScrollConfiguration] to configure the [Scrollable] widgets in a
 /// subtree.
+///
+/// This class can be extended to further customize a [ScrollBehavior] for a
+/// subtree. For example, overriding [ScrollBehavior.getScrollPhysics] sets the
+/// default [ScrollPhysics] for [Scrollable]s that inherit this [ScrollConfiguration].
+/// Overriding [ScrollBehavior.buildViewportChrome] can be used to add or change
+/// default decorations like [GlowingOverscrollIndicator]s.
+/// {@endtemplate}
+///
+/// See also:
+///
+///   * [ScrollConfiguration], the inherited widget that controls how
+///     [Scrollable] widgets behave in a subtree.
 @immutable
 class ScrollBehavior {
   /// Creates a description of how [Scrollable] widgets should behave.
@@ -35,7 +46,7 @@ class ScrollBehavior {
   /// overscrolls.
   Widget buildViewportChrome(BuildContext context, Widget child, AxisDirection axisDirection) {
     // When modifying this function, consider modifying the implementation in
-    // _MaterialScrollBehavior as well.
+    // MaterialScrollBehavior as well.
     switch (getPlatform(context)) {
       case TargetPlatform.iOS:
       case TargetPlatform.linux:
@@ -50,7 +61,6 @@ class ScrollBehavior {
           color: _kDefaultGlowColor,
         );
     }
-    return null;
   }
 
   /// Specifies the type of velocity tracker to use in the descendant
@@ -73,15 +83,13 @@ class ScrollBehavior {
     switch (getPlatform(context)) {
       case TargetPlatform.iOS:
       case TargetPlatform.macOS:
-        return (PointerEvent ev) => IOSScrollViewFlingVelocityTracker();
+        return (PointerEvent event) => IOSScrollViewFlingVelocityTracker(event.kind);
       case TargetPlatform.android:
       case TargetPlatform.fuchsia:
       case TargetPlatform.linux:
       case TargetPlatform.windows:
-        return (PointerEvent ev) => VelocityTracker();
+        return (PointerEvent event) => VelocityTracker.withKind(event.kind);
     }
-    assert(false);
-    return (PointerEvent ev) => VelocityTracker();
   }
 
   static const ScrollPhysics _bouncingPhysics = BouncingScrollPhysics(parent: RangeMaintainingScrollPhysics());
@@ -103,7 +111,6 @@ class ScrollBehavior {
       case TargetPlatform.windows:
         return _clampingPhysics;
     }
-    return null;
   }
 
   /// Called whenever a [ScrollConfiguration] is rebuilt with a new
@@ -131,9 +138,9 @@ class ScrollConfiguration extends InheritedWidget {
   ///
   /// The [behavior] and [child] arguments must not be null.
   const ScrollConfiguration({
-    Key key,
-    @required this.behavior,
-    @required Widget child,
+    Key? key,
+    required this.behavior,
+    required Widget child,
   }) : super(key: key, child: child);
 
   /// How [Scrollable] widgets that are descendants of [child] should behave.
@@ -144,7 +151,7 @@ class ScrollConfiguration extends InheritedWidget {
   /// If no [ScrollConfiguration] widget is in scope of the given `context`,
   /// a default [ScrollBehavior] instance is returned.
   static ScrollBehavior of(BuildContext context) {
-    final ScrollConfiguration configuration = context.dependOnInheritedWidgetOfExactType<ScrollConfiguration>();
+    final ScrollConfiguration? configuration = context.dependOnInheritedWidgetOfExactType<ScrollConfiguration>();
     return configuration?.behavior ?? const ScrollBehavior();
   }
 
